@@ -37,6 +37,7 @@ def load_dataset(name):
         df = pd.DataFrame(data)
         y = df["class"]
         y = y.apply(lambda x: x.decode() if isinstance(x, bytes) else x)
+        y = y.astype(int)
         X = df.drop(columns=["class"])
 
     elif name == "pendigits":
