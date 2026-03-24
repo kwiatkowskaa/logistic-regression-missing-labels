@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import rankdata
 
+
 def generate_mcar(X, Y, c):
     """
     Generate Missing Completely At Random (MCAR) labels.
@@ -34,7 +35,7 @@ def generate_mar1(X, Y, c, j=1):
     sigma = np.std(x)
     p = np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
     p_scaled = p * (c / p.mean())
-    p_scaled - np.clip(p_scaled, a_min=0, a_max=1)
+    p_scaled = np.clip(p_scaled, a_min=0, a_max=1)
     S = np.random.binomial(1, p_scaled)
     Y_obs = Y.copy()
     Y_obs[S == 1] = -1
