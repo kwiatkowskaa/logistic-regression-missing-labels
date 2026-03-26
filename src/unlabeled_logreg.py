@@ -1,42 +1,22 @@
 import numpy as np
+from sklearn.cluster import KMeans
 from src.fista_logreg import FISTALogisticLasso
+from sklearn.linear_model import LogisticRegression
 
 class UnlabeledLogReg:
-    """
-    Logistic regression with missing labels using FISTA.
 
-    Parameters
-    ----------
-    method (str): Method for completing Y:
-        - "self_training"
-        - "soft_labels"
-        - "naive_method"
-        Default = "self_training"
-    max_iter (int): Maximum number of iterations in methods 'self_training'' and 'soft_labels'. Default = 10
-    tol (float): Convergence tolerance. Default = 1e-4
-    threshold (float): Threshold used to convert predicted probabilities into binary labels. Default=0.5
-    fista_params (dict, optional): Parameters passed to FISTALogisticLasso.
-    """
+    def __init__(self, method="self_training", n_clusters=10, fista_params=None):
 
-    def __init__(self, method="self_training", max_iter=10, tol=1e-4, threshold=0.5, fista_params=None):
-
-        if method not in ["self_training", "soft_labels", "naive_method"]:
-            raise ValueError("method must be 'self_training', 'soft_labels' or 'naive_method' ")
+        if method not in ["pseudo_labeling", "kmeans_majority", "naive"]:
+            raise ValueError("method must be 'pseudo_labeling', 'kmeans_majority' or 'naive'")
 
         self.method = method
-        self.max_iter = max_iter
-        self.tol = tol
-        self.threshold = threshold
+        self.n_clusters = n_clusters
         self.fista_params = fista_params if fista_params is not None else {}
 
         self.model_ = None
-        self.beta_ = None
-        self.Y_completed_ = None
 
-    def fit(self, X, Y_obs):
-        """
-        Fit model with missing labels.
-        """
+    def fit(self, X, Y_obs, X_val, y_val):
 
         X = np.asarray(X)
         Y_obs = np.asarray(Y_obs)
@@ -45,108 +25,69 @@ class UnlabeledLogReg:
         unlabeled_mask = Y_obs == -1
 
         X_l = X[labeled_mask]
+
+        if X_l.shape[0] < 5:
+            print(f"Too few labeled samples ({X_l.shape[0]}), skipping...")
+            return self
+        
         Y_l = Y_obs[labeled_mask]
+
         X_u = X[unlabeled_mask]
 
+        if len(X_l) < 5:
+            raise ValueError("Too few labeled samples")
 
-        if self.method == "self_training":
-            X_completed, Y_completed = self._self_training(X_l, Y_l, X_u, unlabeled_mask, X, Y_obs)
+        if self.method == "pseudo_labeling":
+            X_completed, Y_completed = self._pseudo_labeling(X, Y_obs, X_l, Y_l, X_u, unlabeled_mask)
 
-        elif self.method == "soft_labels":
-            X_completed, Y_completed = self._soft_labels(X_u, unlabeled_mask, X, Y_obs)
+        elif self.method == "kmeans_majority":
+            X_completed, Y_completed = self._kmeans_majority(X, Y_obs, labeled_mask, unlabeled_mask)
 
-        elif self.method == 'naive_method':
-            X_completed, Y_completed = self._naive_method(X_l, Y_l)
+        elif self.method == "naive":
+            X_completed, Y_completed = X_l, Y_l
 
         model = FISTALogisticLasso(**self.fista_params)
-        model.fit(X_completed, Y_completed)
-
+        model.fit(X_completed, Y_completed, auto_validate=True, X_valid=X_val, y_valid= y_val)
         self.model_ = model
-        self.beta_ = model.beta_
-        self.Y_completed_ = Y_completed
 
         return self
 
-    def _self_training(self, X_l, Y_l, X_u, unlabeled_mask, X, Y_obs):
-        """
-        Perform self-training to iteratively complete missing labels.
-
-        At each iteration:
-        - Train model on currently labeled data
-        - Predict labels for unlabeled samples
-        - Add predicted labels to the training set
-        """
+    def _pseudo_labeling(self, X, Y_obs, X_l, Y_l, X_u, unlabeled_mask):
 
         Y_completed = Y_obs.copy()
-        X_completed = X.copy()
 
-        for _ in range(self.max_iter):
-            
-            model = FISTALogisticLasso(**self.fista_params)
-            model.fit(X_l, Y_l)
+        model = LogisticRegression(max_iter=1000) ## można uzyc FISTALogisticLasso(**self.fista_params) ale to daje podobne wyniki
+        model.fit(X_l, Y_l)
+        
+        if X_u.shape[0] > 0:
+            Y_completed[unlabeled_mask] = model.predict(X_u)
 
-            proba = model.predict_proba(X_u)
-            Y_u_pred = (proba >= self.threshold).astype(int)
+        return X, Y_completed
 
-            Y_completed[unlabeled_mask] = Y_u_pred
+    def _kmeans_majority(self, X, Y_obs, labeled_mask, unlabeled_mask):
 
-            X_l = X
-            Y_l = Y_completed
+        Y_completed = Y_obs.copy()
 
-        return X_completed, Y_completed
+        all_X = X
+        kmeans = KMeans(n_clusters=self.n_clusters, random_state=42)
+        clusters = kmeans.fit_predict(all_X)
 
-    def _soft_labels(self, X_u, unlabeled_mask, X, Y_obs):
-        """
-        Perform soft-label training.
+        for cluster_id in range(self.n_clusters):
+            cluster_mask = clusters == cluster_id
+            labeled_in_cluster = cluster_mask & labeled_mask
+            unlabeled_in_cluster = cluster_mask & unlabeled_mask
 
-        Missing labels are initialized with 0.5 and iteratively updated
-        using predicted probabilities until convergence or max_iter is reached.
-        """
+            if np.sum(labeled_in_cluster) == 0:
+                continue
 
-        Y_completed = Y_obs.copy().astype(float)
+            majority_label = np.round(np.mean(Y_obs[labeled_in_cluster]))
+            if np.sum(unlabeled_in_cluster) > 0:
+                Y_completed[unlabeled_in_cluster] = majority_label
 
-        Y_completed[unlabeled_mask] = 0.5
-
-        X_completed = X.copy()
-
-        for _ in range(self.max_iter):
-
-            Y_old = Y_completed.copy()
-
-            model = FISTALogisticLasso(**self.fista_params)
-            model.fit(X, Y_completed)
-
-            proba = model.predict_proba(X_u)
-
-            Y_completed[unlabeled_mask] = proba
-
-            if np.linalg.norm(Y_completed - Y_old) < self.tol:
-                break
-
-        Y_completed = (Y_completed >= self.threshold).astype(int)
-
-        return X_completed, Y_completed
-    
-    def _naive_method(self, X_l, Y_l):
-        """
-        Train only on labeled data, ignoring unlabeled samples.
-        """
-
-        X_completed = X_l.copy()
-        Y_completed = Y_l.copy()
-
-        return X_completed, Y_completed
+        return X, Y_completed
 
     def predict(self, X):
-        """
-        Predict binary labels for new data.
-        """
-
         return self.model_.predict(X)
 
     def predict_proba(self, X):
-        """
-        Predict class probabilities for new data.
-        """
-
         return self.model_.predict_proba(X)
