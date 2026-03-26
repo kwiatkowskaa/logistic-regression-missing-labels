@@ -54,6 +54,19 @@ def load_dataset(name):
         y = dataset.data.targets
         y = y.iloc[:, 0]
         y = y.map({"g":1, "h":0})
+    
+    elif name == "spambase":
+        dataset = fetch_ucirepo(id=94)
+        X = dataset.data.features
+        y = dataset.data.targets
+        y = y.iloc[:, 0]
+        y = y.astype(int)
+
+    elif name == "htru2":
+        dataset = fetch_ucirepo(id=372)
+        X = dataset.data.features
+        y = dataset.data.targets.iloc[:, 0]
+        y = y.astype(int)
 
     return X, y
 

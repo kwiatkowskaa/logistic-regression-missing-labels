@@ -11,14 +11,14 @@ class FISTALogisticLasso:
     ----------
     lambda_values (array-like, optional): Sequence of regularization strengths to evaluate during validation.
     lam (float): Regularization strength used when auto_validate=False. Default=1.0
-    max_iter (int): Maximum number of FISTA iterations. Default=1000
-    tol (float): Convergence tolerance for stopping criterion. Default=1e-9
+    max_iter (int): Maximum number of FISTA iterations. Default=100
+    tol (float): Convergence tolerance for stopping criterion. Default=1e-6
     """
     
-    def __init__(self, lambda_values=None, lam=1.0, max_iter=1000, tol=1e-9):
+    def __init__(self, lambda_values=None, lam=1.0, max_iter=100, tol=1e-6):
 
         if lambda_values is None:
-            self.lambda_values = np.logspace(-5, 0, 10)
+            self.lambda_values = np.logspace(-3, 0, 20)
         else:
             self.lambda_values = lambda_values
 
@@ -109,10 +109,11 @@ class FISTALogisticLasso:
         t = 1
         L = np.linalg.norm(X_train, 2)**2 / 4
         
-        for _ in range(self.max_iter):
+        for i in range(self.max_iter):
 
             beta_old = beta.copy()
             gradient = self._gradient(X_train, y_train, y)
+
             beta = self._soft_thresholding(y - gradient / L, lambda_value / L)
             t_new = (1 + np.sqrt(1 + 4 * t**2)) / 2
             y = beta + ((t - 1) / t_new) * (beta - beta_old)
@@ -216,7 +217,8 @@ class FISTALogisticLasso:
         """
         Compute the gradient of the logistic loss.
         """
-        z = 1 / (1 + np.exp(-X @ beta))
+        Xb = X @ beta
+        z = 1 / (1 + np.exp(-Xb))
         return X.T @ (z - y)
     
 
