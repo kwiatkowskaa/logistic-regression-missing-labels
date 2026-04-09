@@ -16,7 +16,7 @@ The project is divided into three main parts:
 
 ## Task 2 — Logistic Regression with FISTA
 
-## Description
+### Description
 
 In this task, we implement Logistic Regression with L1 regularization (Logistic Lasso) using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
 
@@ -28,7 +28,7 @@ The implementation:
   - validation data: `X_valid`, `y_valid`
 - selects the optimal λ based on validation performance  
 
-## Supported Evaluation Metrics
+### Supported Evaluation Metrics
 
 The following metrics can be used for validation:
 
@@ -41,7 +41,7 @@ The following metrics can be used for validation:
 
 For threshold-based metrics, a default threshold of **0.5** is used.
 
-## How to Run
+### How to Run
 
 Below is a complete example showing how to train the FISTA-based logistic regression model, perform validation-based lambda selection, and visualize the results.
 
