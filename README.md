@@ -85,4 +85,33 @@ model.plot()
 model.plot_coefficients()
 
 ```
-## Task 3 — TO DO
+
+## Task 3 — Learning with Missing Labels
+
+### Description
+
+In this task, we implement a semi-supervised extension of logistic regression using the `UnlabeledLogReg` class.
+
+The model handles missing labels (denoted as `-1`) by completing them before training a Logistic Lasso model (FISTA-based). The following strategies are supported:
+
+- `pseudo_labeling` — predict missing labels using a model trained on labeled data  
+- `kmeans_majority` — assign labels based on cluster majority voting  
+- `naive` — use only labeled data  
+
+---
+
+### Experiments
+
+Two experiments are conducted to evaluate the methods:
+
+#### Experiment 1 — Fixed Missing Rate
+
+- Compare methods (`pseudo_labeling`, `kmeans_majority`, `naive`) at a fixed missing rate  
+- Evaluate their performance under different missing data mechanisms  
+- Results are presented using tables and bar plots  
+
+#### Experiment 2 — Performance vs Missing Rate
+
+- Evaluate how performance changes as the missing rate increases  
+- Results are shown in tables and line plots  
+- Allows comparison of robustness across methods  
