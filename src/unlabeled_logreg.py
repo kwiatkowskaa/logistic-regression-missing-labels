@@ -5,7 +5,41 @@ from sklearn.linear_model import LogisticRegression
 
 class UnlabeledLogReg:
 
-    def __init__(self, method="self_training", n_clusters=10, fista_params=None):
+    def __init__(self, method="pseudo_labeling", n_clusters=10, fista_params=None):
+        """
+        Semi-supervised logistic regression model handling missing labels.
+
+        This class implements different strategies for dealing with unlabeled
+        samples (denoted by -1 in Y_obs), and then trains a logistic regression
+        model using the completed dataset.
+
+        Available methods include:
+        - pseudo-labeling
+        - k-means majority voting
+        - naive (ignore unlabeled data)
+
+        Parameters
+        ----------
+        method : str, optional
+            Strategy used to handle unlabeled data. Must be one of:
+            - "pseudo_labeling": Train a model on labeled data and predict missing labels
+            - "kmeans_majority": Assign labels based on cluster majority voting
+            - "naive": Use only labeled data
+            Default = "pseudo_labeling"
+
+        n_clusters : int, optional
+            Number of clusters used in k-means (only relevant for "kmeans_majority").
+            Default = 10
+
+        fista_params : dict, optional
+            Parameters passed to the FISTALogisticLasso model.
+            If None, default parameters are used.
+
+        Attributes
+        ----------
+        model_ : FISTALogisticLasso
+            Trained logistic regression model.
+        """
 
         if method not in ["pseudo_labeling", "kmeans_majority", "naive"]:
             raise ValueError("method must be 'pseudo_labeling', 'kmeans_majority' or 'naive'")
@@ -17,6 +51,31 @@ class UnlabeledLogReg:
         self.model_ = None
 
     def fit(self, X, Y_obs, X_val, y_val):
+        """
+        Fit the model using partially labeled data.
+
+        This method separates labeled and unlabeled samples, applies the selected
+        strategy to complete missing labels, and trains a logistic regression model.
+
+        Parameters
+        ----------
+        X : array-like
+            Input feature matrix.
+
+        Y_obs : array-like
+            Observed labels. Unlabeled samples should be marked as -1.
+
+        X_val : array-like
+            Validation feature matrix used for model selection.
+
+        y_val : array-like
+            Validation labels.
+
+        Returns
+        -------
+        self : object
+            Fitted model instance.
+        """
 
         X = np.asarray(X)
         Y_obs = np.asarray(Y_obs)
@@ -53,10 +112,41 @@ class UnlabeledLogReg:
         return self
 
     def _pseudo_labeling(self, X, Y_obs, X_l, Y_l, X_u, unlabeled_mask):
+        """
+        Fill missing labels using pseudo-labeling.
+
+        A logistic regression model is trained on labeled data and used
+        to predict labels for unlabeled samples.
+
+        Parameters
+        ----------
+        X : array-like
+            Full dataset.
+
+        Y_obs : array-like
+            Observed labels with missing values.
+
+        X_l : array-like
+            Labeled feature subset.
+
+        Y_l : array-like
+            Labels for labeled data.
+
+        X_u : array-like
+            Unlabeled feature subset.
+
+        unlabeled_mask : array-like (bool)
+            Mask indicating unlabeled samples.
+
+        Returns
+        -------
+        tuple
+            (X, Y_completed) where missing labels are filled.
+        """
 
         Y_completed = Y_obs.copy()
 
-        model = LogisticRegression(max_iter=1000) ## można uzyc FISTALogisticLasso(**self.fista_params) ale to daje podobne wyniki
+        model = LogisticRegression(max_iter=1000)
         model.fit(X_l, Y_l)
         
         if X_u.shape[0] > 0:
@@ -65,6 +155,31 @@ class UnlabeledLogReg:
         return X, Y_completed
 
     def _kmeans_majority(self, X, Y_obs, labeled_mask, unlabeled_mask):
+        """
+        Fill missing labels using k-means clustering and majority voting.
+
+        Data is clustered using k-means, and unlabeled samples receive
+        the majority label of labeled samples within the same cluster.
+
+        Parameters
+        ----------
+        X : array-like
+            Input feature matrix.
+
+        Y_obs : array-like
+            Observed labels.
+
+        labeled_mask : array-like (bool)
+            Mask indicating labeled samples.
+
+        unlabeled_mask : array-like (bool)
+            Mask indicating unlabeled samples.
+
+        Returns
+        -------
+        tuple
+            (X, Y_completed) with filled labels.
+        """
 
         Y_completed = Y_obs.copy()
 
@@ -87,7 +202,35 @@ class UnlabeledLogReg:
         return X, Y_completed
 
     def predict(self, X):
+        """
+        Predict class labels for input samples.
+
+        Parameters
+        ----------
+        X : array-like
+            Input feature matrix.
+
+        Returns
+        -------
+        array-like
+            Predicted class labels.
+        """
+
         return self.model_.predict(X)
 
     def predict_proba(self, X):
+        """
+        Predict class probabilities for input samples.
+
+        Parameters
+        ----------
+        X : array-like
+            Input feature matrix.
+
+        Returns
+        -------
+        array-like
+            Predicted probabilities.
+        """
+
         return self.model_.predict_proba(X)
