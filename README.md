@@ -11,7 +11,7 @@ The project is divided into three main parts:
 - **Task 3** – extension to learning with missing labels using custom strategies  
 
 
-## Task 1 - Missingness generation methods
+## Task 1 - Target Variable Missingness Mechanisms
 
 For this task, we implemented four missingness generating methods.
 
