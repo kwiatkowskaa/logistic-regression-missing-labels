@@ -11,7 +11,34 @@ The project is divided into three main parts:
 - **Task 3** – extension to learning with missing labels using custom strategies  
 
 
-## Task 1 - TO DO
+## Task 1 - Missingness generation methods
+
+For this task, we implemented four missingness generating methods.
+
+### Missing Completely at Random: `mcar()`
+Each label is removed independently with probability $c$, using a Bernoulli sampling scheme. Missingness is uniform and independent of both features and the target variable.
+
+### Missing At Random – single feature: `mar1()`
+Missingness depends on a single feature $X_j$. The probability of missingness is defined as:
+- Gaussian function centered at the feature mean
+- Higher probability of missingness for values further from the mean
+
+Probabilities are then rescaled to achieve an overall missingness rate $c$.
+
+### Missing At Random – all features: `mar2()`
+Missingness depends on all standardized features:
+- Features are standardized
+- A random linear combination is computed
+- A logistic function is applied to obtain probabilities
+
+Probabilities are rescaled to match the target missingness level $c$.
+
+### Missing Not At Random: `mnar()`
+Missingness depends on the target variable $Y$:
+- Observations are ranked by label value
+- Higher-ranked values have higher probability of being missing
+
+Probabilities are normalized and scaled to achieve missingness level $c$
 
 
 ## Task 2 — Logistic Regression with FISTA
