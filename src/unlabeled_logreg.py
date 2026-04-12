@@ -1,7 +1,8 @@
 import numpy as np
 from sklearn.cluster import KMeans
-from src.fista_logreg import FISTALogisticLasso
 from sklearn.linear_model import LogisticRegression
+
+from src.fista_logreg import FISTALogisticLasso
 
 class UnlabeledLogReg:
 

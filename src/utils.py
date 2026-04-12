@@ -49,10 +49,13 @@ def load_dataset(name):
         X = df.drop(columns=["binaryClass"])
 
     elif name == "magic":
-        dataset = fetch_ucirepo(id=159)
-        X = dataset.data.features
-        y = dataset.data.targets
-        y = y.iloc[:, 0]
+        dataset = pd.read_csv(DATA_PATH / "magic04_gamma.csv", index_col=0)
+        X = dataset.drop(columns=["class"])
+        y = dataset["class"]
+        # dataset = fetch_ucirepo(id=159)
+        # X = dataset.data.features
+        # y = dataset.data.targets
+        # y = y.iloc[:, 0]
         y = y.map({"g":1, "h":0})
     
     elif name == "spambase":
